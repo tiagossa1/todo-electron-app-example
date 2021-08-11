@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+
+<script>
+    const { getAll, getById, create, deleteById } = require("./database.js")
+    const electron = require("electron")
+    const ipc = electron.ipcRenderer;
+
+    document.addEventListener("DOMContentLoaded", function() {
+        getAll().then((data) => {
+            data.forEach(element => {
+                appendToTable(element)
+            });
+        })
+    })
+
+    function getDeleteAction(id) {
+        var btn = document.createElement("button");
+        btn.id = `btnDelete_${id}`
+        btn.className = "btn btn-danger";
+        btn.innerHTML = "<i class='bi bi-x'></i>";
+        btn.onclick = function() {
+            btnDeleteOnClick(btn.id);
+        };
+
+        return btn;
+    }
+
+    function appendToTable(todoObj) {
+        if(todoObj) {
+            var tbodyTag = document.getElementsByTagName("tbody")[0];
+
+            if(tbodyTag) {
+                    var trTag = document.createElement("tr");
+                    var descriptionTag = document.createElement("td");
+                    var createdOnTag = document.createElement("td");
+                    var actionsTag = document.createElement("td");
+                    actionsTag.append(getDeleteAction(todoObj.id));
+
+                    descriptionTag.innerHTML = todoObj.description;
+                    createdOnTag.innerHTML = todoObj.createdOn;
+
+                    trTag.append(descriptionTag);
+                    trTag.append(createdOnTag);
+                    trTag.append(actionsTag);
+
+                    tbodyTag.append(trTag);
+                }
+        }
+    }
+
+    function btnCreateOnClick() {
+        let todoItem = document.getElementById("todoItem");
+
+        if(todoItem && todoItem.value) {
+            create(todoItem.value).then(obj => {
+                appendToTable(obj)
+            });
+
+            clearTodoInput()
+        }
+    }
+
+    function btnDeleteOnClick(btnId) {
+        console.log(`Got triggered! ${btnId}`);
+        if(btnId) {
+            let objId = btnId.replace('btnDelete_', '');
+
+            deleteById(objId).then((msg) => {
+                console.log(`Deleted: ${msg}`);
+
+                var btnTag = document.getElementById(btnId);
+
+                console.log(btnTag.parentNode.parentNode);
+                btnTag.parentNode.parentNode.remove()
+            }).catch(err => {
+                console.error(`There was an error trying to delete the object with ID ${objId}: ${err}`)
+            })
+        }
+    }
+
+    function btnClearAllOnClick() {
+        var tbodyTag = document.getElementsByTagName("tbody")[0]
+
+        getAll().then(todos => {
+            todos.forEach(element => {
+                deleteById(element.id).then((data) => {
+                    console.log(`ID ${data} was deleted.`)
+                }).catch(err => console.error(`Could not delete object: ${err}`))
+            });
+        })
+
+        if(tbodyTag) {
+            while (tbodyTag.firstChild) {
+                tbodyTag.firstChild.remove()
+            }
+        }
+
+        clearTodoInput()
+    }
+
+    function clearTodoInput() {
+        document.getElementById("todoItem").value = ''
+    }
+</script>
+
+<head>
+    <title>Todo</title>
+</head>
+
+<body class="container">
+    <h1>My Todos</h1>
+    <br>
+    <div class="row">
+        <div class="col-11"><input id="todoItem" class="form-control" type="text"></input></div>
+        <div class="col-1">
+            <button id="btnCreate" type="button" class="w-100 btn btn-primary" onclick="btnCreateOnClick()">Add </button>
+        </div>
+    </div>
+    <br>
+    <div class="row">
+        <div class="col-12">
+            <button id="btnClearAll" type="button" class="w-100 btn btn-danger" onclick="btnClearAllOnClick()">CLEAR ALL TODOS</button>
+        </div>
+    </div>
+    <br>
+    <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">Description</th>
+            <th scope="col">Created On</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+</body>
+
+<link rel="stylesheet" href="./node_modules/bootstrap-icons/font/bootstrap-icons.css">
+<link rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.css" />
+<script src="./app/renderer.js"></script>
+</html>
